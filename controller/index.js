@@ -2,10 +2,12 @@
 const Router = require('@koa/router');
 const config = require('config');
 const Joi = require('joi');
+const jwt = require('jsonwebtoken');
 
 const apis = [
   require('./users'),
 ]
+// TODO, if api no exist, no error
 
 const koaRouter = new Router({
   prefix: config.get('routerPrefix') || '',
@@ -20,9 +22,9 @@ const optionsSchema = Joi.object({
   middlewares: Joi.array().required()
 }).required();
 
-const UserRouter = function () {};
+const ApiRouter = function () {};
 ['get', 'post', 'put', 'del'].forEach((method) => {
-  UserRouter.prototype[method] = (apiInfo, middlewares) => {
+  ApiRouter.prototype[method] = (apiInfo, middlewares) => {
     const result = optionsSchema.validate({
       apiInfo, middlewares
     });
@@ -30,9 +32,9 @@ const UserRouter = function () {};
       throw new Error('Router Register Error');
     }
 
-    const { path, validate: apiSchema, skipAuth } = apiInfo;
+    const { path, validate: apiSchema } = apiInfo;
 
-    if (skipAuth) {
+    if (apiInfo.skipAuth) {
       koaRouter[method](path, async (ctx, next) => {
         const apiResult = apiSchema.validate({
           body: ctx.request.body,
@@ -47,14 +49,27 @@ const UserRouter = function () {};
         await next();
       }, ...middlewares);
     } else {
-      // TODO, add auth middleware
+      koaRouter[method](path, async (ctx, next) => {
+        const apiResult = apiSchema.validate({
+          body: ctx.request.body,
+          query: ctx.request.query,
+          params: ctx.request.params
+        });
+        if (apiResult.error) {
+          throw apiResult.error;
+        }
+
+        ctx.validation = apiResult.value;
+        ctx.validation.userId = jwt.verify(ctx.header.authorization, '123456').teacherId;
+        await next();
+      }, ...middlewares);
     }
   };
 });
 
-const userRouter = new UserRouter();
+const apiRouter = new ApiRouter();
 apis.forEach((apiModule) => {
-  apiModule(userRouter);
+  apiModule(apiRouter);
 })
 
 module.exports.register = (app) => {
