@@ -14,7 +14,7 @@
 
 ## Quick Start
 
-- env: 1.You should start MongoDB locally
+- env: 1.You should start MongoDB locally: docker run -it -p 27017:27017 mongo
 
 ### How to start this project
 

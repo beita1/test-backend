@@ -6,7 +6,10 @@ config/local.json
 
 ## chore output ignore
 /node_modules/*
+coverage/
+.nyc_output/
 
 ## log ignore
 server.log
+
 
